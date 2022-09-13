@@ -4,7 +4,7 @@ A very basic version of batch dataflow.
 
 ### Input
 It takes a csv file. 
-When testing locally, it reads the file present locally 'local_file.csv' and all the settings in "if run_local:" section
+When testing locally, set "RUN_LOCALLY = True" and it reads the file present locally 'local_file.csv' and all the settings in "if run_local:" section
 When testing on GCP, it reads the file from GCS. Also note that the file location and other parameters are passed as templated inputs to the dataflow. 
 This can be done by say a calling cloud function that send these inputs to the dataflow through an API call. 
 

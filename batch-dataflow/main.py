@@ -25,11 +25,20 @@ collectn='firestore_collection'
 # better to implement below schema as a json schema in a separate file
 table_schema = 'orderId:STRING,orderType:STRING,orderDateTime:DATETIME,customerId:STRING,country:STRING,insertDateTime:DATETIME'
 
+GENERATE_TEMPLATE = True if "generate-template" in sys.argv else False
+
+SHOW_HELP = (
+    True
+    if [i for i in ["generate-template"] if i in sys.argv] == []
+    else False
+)
+
+RUN_LOCALLY = False
+
 class UserOptions(PipelineOptions):
     @classmethod
     def _add_argparse_args(cls, parser):
         parser.add_value_provider_argument('--templated_input', type=str)
-        parser.add_value_provider_argument('--templated_error_output', type=str)
         parser.add_value_provider_argument('--templated_header', type=str)
         parser.add_value_provider_argument('--templated_RU', type=str)
 
@@ -80,7 +89,6 @@ def dataflow(run_local):
         'project': PROJECT,
         'staging_location': 'gs://' + BUCKET + '/staging',
         'temp_location': 'gs://' + BUCKET + '/temp',
-        'template_location': 'gs://'+ BUCKET +'/template/my_dataflow_template',
         'runner': 'DataflowRunner',
         'job_name': JOB_NAME,
         'disk_size_gb': 100,
@@ -89,13 +97,17 @@ def dataflow(run_local):
         'requirements_file':'requirements.txt'
          }  
 
+    if GENERATE_TEMPLATE:
+        pipeline_options["template_location"] = (
+            'gs://'+ BUCKET +'/template/my_dataflow_template'
+        )
+
     options = PipelineOptions.from_dictionary(pipeline_options)
     user_options = options.view_as(UserOptions)
     input_file_path = user_options.templated_input
-    gcs_error_log_location = user_options.templated_error_output
     header = user_options.templated_header
     RU = user_options.templated_RU
-    Dataset = 'my_dataset'
+    dataset = 'my_dataset'
     
     if run_local:
         print("Running Locally...")
@@ -116,10 +128,21 @@ def dataflow(run_local):
              
         
         BQ = (lines | 'CSV row to BQ dict' >> beam.ParDo(CSVToBQDict(), header, RU)
-        | 'Write To BigQuery' >> beam.io.gcp.bigquery.WriteToBigQuery('order_table', schema=table_schema,dataset=Dataset, project='some_gcp_project'))
+        | 'Write To BigQuery' >> beam.io.gcp.bigquery.WriteToBigQuery('order_table', schema=table_schema,dataset=dataset, project='some_gcp_project'))
         
-if __name__ == '__main__':
-    run_locally = False
+
+
+if __name__ == "__main__":
+
     print("Starting Dataflow")
 
-    dataflow(run_locally)
+    if SHOW_HELP:
+        print("Configured environment:\n{}".format(CONFIG))
+        print(
+            """
+Please add the following parameters:\n
+    generate-template,  to generate a new template for configured env
+    """
+        )
+    else:
+        dataflow(RUN_LOCALLY)
